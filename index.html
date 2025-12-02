@@ -1,0 +1,332 @@
+{\rtf1\ansi\ansicpg950\cocoartf2867
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="zh-TW">\
+<head>\
+    <meta charset="UTF-8">\
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">\
+    <title>\uc0\u21363 \u26178 \u25237 \u36039 \u32068 \u21512 \u20736 \u34920 \u26495  (\u26368 \u32066 \u20462 \u27491 \u29256 )</title>\
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>\
+    <style>\
+        body \{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; \}\
+        .container \{ max-width: 1200px; margin: 0 auto; \}\
+        .header \{ background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; \}\
+        .header h1 \{ margin: 0; color: #333; font-size: 1.5rem; \}\
+        .header p \{ color: #666; margin: 5px 0 0; font-size: 0.9rem; \}\
+        .refresh-btn \{ background-color: #36a2eb; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; transition: background 0.3s; \}\
+        .refresh-btn:hover \{ background-color: #258cd1; \}\
+        \
+        .kpi-grid \{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; \}\
+        .kpi-card \{ background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; \}\
+        .kpi-title \{ font-size: 0.9em; color: #888; margin-bottom: 5px; \}\
+        .kpi-value \{ font-size: 1.5em; font-weight: bold; color: #333; \}\
+        .positive \{ color: #28a745; \}\
+        .negative \{ color: #dc3545; \}\
+\
+        .charts-container \{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; \}\
+        .chart-card \{ background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); \}\
+        \
+        .table-container \{ background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow-x: auto; \}\
+        table \{ width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; \}\
+        th, td \{ padding: 12px; text-align: left; border-bottom: 1px solid #eee; \}\
+        th \{ background-color: #f8f9fa; color: #555; cursor: pointer; user-select: none; \}\
+        th:hover \{ background-color: #e9ecef; \}\
+        tr:hover \{ background-color: #f1f1f1; \}\
+        .loading \{ text-align: center; padding: 20px; color: #666; font-style: italic; \}\
+\
+        @media (max-width: 768px) \{\
+            .charts-container \{ grid-template-columns: 1fr; \}\
+            .header \{ flex-direction: column; align-items: flex-start; \}\
+            .refresh-btn \{ margin-top: 10px; \}\
+        \}\
+    </style>\
+</head>\
+<body>\
+\
+<div class="container">\
+    <div class="header">\
+        <div>\
+            <h1>\uc0\u20491 \u20154 \u35657 \u21048 \u36039 \u29986 \u20998 \u26512 \u32317 \u34920 </h1>\
+            <p>\uc0\u36039 \u26009 \u20358 \u28304 \u65306 Google \u35430 \u31639 \u34920  (\u21363 \u26178 \u36899 \u21205 ) | <span id="lastUpdated">\u26356 \u26032 \u20013 ...</span></p>\
+        </div>\
+        <button class="refresh-btn" onclick="fetchData()">\uc0\u37325 \u26032 \u25972 \u29702 </button>\
+    </div>\
+\
+    <div class="kpi-grid">\
+        <div class="kpi-card">\
+            <div class="kpi-title">\uc0\u32317 \u25237 \u20837 \u25104 \u26412 </div>\
+            <div class="kpi-value" id="kpi-cost">-</div>\
+        </div>\
+        <div class="kpi-card">\
+            <div class="kpi-title">\uc0\u30446 \u21069 \u32317 \u24066 \u20540 </div>\
+            <div class="kpi-value" id="kpi-value">-</div>\
+        </div>\
+        <div class="kpi-card">\
+            <div class="kpi-title">\uc0\u24115 \u38754 \u32317 \u25613 \u30410 </div>\
+            <div class="kpi-value" id="kpi-pl">-</div>\
+        </div>\
+        <div class="kpi-card">\
+            <div class="kpi-title">\uc0\u32317 \u22577 \u37228 \u29575 </div>\
+            <div class="kpi-value" id="kpi-pct">-</div>\
+        </div>\
+    </div>\
+\
+    <div class="charts-container">\
+        <div class="chart-card">\
+            <h3>\uc0\u21069  10 \u22823 \u25345 \u20489  (\u25353 \u24066 \u20540 )</h3>\
+            <canvas id="topHoldingsChart"></canvas>\
+        </div>\
+        <div class="chart-card">\
+            <h3>\uc0\u20027 \u35201 \u29554 \u21033 /\u34407 \u25613 \u20358 \u28304  (\u37329 \u38989 )</h3>\
+            <canvas id="plChart"></canvas>\
+        </div>\
+    </div>\
+\
+    <div class="table-container">\
+        <h3>\uc0\u25345 \u32929 \u26126 \u32048  (\u40670 \u25802 \u27161 \u38988 \u21487 \u25490 \u24207 )</h3>\
+        <table id="holdingsTable">\
+            <thead>\
+                <tr>\
+                    <th onclick="sortTable(0)">\uc0\u20195 \u30908 </th>\
+                    <th onclick="sortTable(1)">\uc0\u21517 \u31281 </th>\
+                    <th onclick="sortTable(2)">\uc0\u24235 \u23384 \u25104 \u26412 </th>\
+                    <th onclick="sortTable(3)">\uc0\u24235 \u23384 \u29694 \u20540 </th>\
+                    <th onclick="sortTable(4)">\uc0\u24235 \u23384 \u25613 \u30410 </th>\
+                    <th onclick="sortTable(5)">\uc0\u22577 \u37228 \u29575  %</th>\
+                </tr>\
+            </thead>\
+            <tbody id="tableBody">\
+                <tr><td colspan="6" class="loading">\uc0\u27491 \u22312 \u35712 \u21462  Google \u35430 \u31639 \u34920 \u36039 \u26009 ...</td></tr>\
+            </tbody>\
+        </table>\
+    </div>\
+</div>\
+\
+<script>\
+    // \uc0\u24744 \u30340  Google Sheet CSV \u36899 \u32080  (\u24050 \u20462 \u27491 \u65292 \u30446 \u27161 \u26159 \u35731 \u24744 \u30452 \u25509 \u38283 \u21855 \u27284 \u26696 \u20063 \u33021 \u25104 \u21151 )\
+    const googleSheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfHLeQ3OVmKrVEQXUwD7VUiC5Hgnp8DORBJsL8Rs_434tzm7frIzs5hAsFsVgDL7fZM4ySENKHw5Fy/pub?gid=947201725&single=true&output=csv';\
+    \
+    let chartInstance1 = null;\
+    let chartInstance2 = null;\
+\
+    // CSV \uc0\u35299 \u26512 \u22120 \u65306 \u33021 \u34389 \u29702 \u21253 \u21547 \u36887 \u34399 \u30340 \u25976 \u23383 \
+    function parseCSVLine(text) \{\
+        const result = [];\
+        let startValueIndex = 0;\
+        let inQuotes = false;\
+        \
+        for (let i = 0; i < text.length; i++) \{\
+            if (text[i] === '"') \{\
+                inQuotes = !inQuotes;\
+            \} else if (text[i] === ',' && !inQuotes) \{\
+                let val = text.substring(startValueIndex, i);\
+                if (val.startsWith('"') && val.endsWith('"')) \{\
+                    val = val.substring(1, val.length - 1);\
+                \}\
+                result.push(val.trim());\
+                startValueIndex = i + 1;\
+            \}\
+        \}\
+        let val = text.substring(startValueIndex);\
+        if (val.startsWith('"') && val.endsWith('"')) \{\
+            val = val.substring(1, val.length - 1);\
+        \}\
+        result.push(val.trim());\
+        return result;\
+    \}\
+\
+    async function fetchData() \{\
+        document.getElementById('tableBody').innerHTML = '<tr><td colspan="6" class="loading">\uc0\u27491 \u22312 \u26356 \u26032 \u36039 \u26009 ...</td></tr>';\
+        document.getElementById('lastUpdated').innerText = '\uc0\u26356 \u26032 \u20013 ...';\
+\
+        try \{\
+            // \uc0\u20351 \u29992  allorigins \u20316 \u28858  CORS \u20195 \u29702 \u65292 \u20006 \u21152 \u19978 \u26178 \u38291 \u25139 \u38450 \u27490 \u24555 \u21462 \
+            // \uc0\u36889 \u26159 \u28858 \u20102 \u35731 \u24744 \u22312 \u26412 \u22320 \u31471 \u38283 \u21855  HTML (file://) \u26178 \u33021 \u25104 \u21151 \u35712 \u21462 \u36039 \u26009 \
+            const proxyUrl = `https://api.allorigins.win/raw?url=$\{encodeURIComponent(googleSheetUrl)\}&timestamp=$\{new Date().getTime()\}`;\
+            \
+            const response = await fetch(proxyUrl);\
+            \
+            if (!response.ok) throw new Error('\uc0\u32178 \u36335 \u22238 \u25033 \u37679 \u35492 \u65292 \u21487 \u33021 \u30332 \u29983  CORS \u38459 \u25803 \u12290 ');\
+            \
+            const data = await response.text();\
+            \
+            const rows = data.split(/\\r\\n|\\n/).slice(1);\
+            \
+            const portfolioData = rows.map(row => \{\
+                if (!row.trim()) return null;\
+                \
+                const cols = parseCSVLine(row);\
+                \
+                // \uc0\u26681 \u25818 \u24744 \u30340 \u27396 \u20301 \u38918 \u24207 \u65292 \u32317 \u20849 \u26159  12 \u27396  (\u32034 \u24341  0-11)\
+                if (cols.length < 12) return null;\
+\
+                const cleanNum = (str) => parseFloat(str.replace(/,/g, '').replace(/%/g, '')) || 0;\
+\
+                return \{\
+                    code: cols[0],\
+                    name: cols[1],\
+                    // ******************** \uc0\u38364 \u37749 \u20462 \u27491 \u34389  ********************\
+                    cost: cleanNum(cols[8]),    // \uc0\u24235 \u23384 \u25104 \u26412  (Index 8)\
+                    value: cleanNum(cols[9]),   // \uc0\u24235 \u23384 \u29694 \u20540  (Index 9)\
+                    pl: cleanNum(cols[10]),     // \uc0\u24235 \u23384 \u25613 \u30410  (Index 10)\
+                    pct: cleanNum(cols[11])     // \uc0\u24235 \u23384 \u25613 \u30410 % (Index 11)\
+                    // ****************************************************\
+                \};\
+            \}).filter(item => item !== null);\
+\
+            updateDashboard(portfolioData);\
+            \
+            const now = new Date();\
+            document.getElementById('lastUpdated').innerText = `\uc0\u26368 \u24460 \u26356 \u26032 : $\{now.getHours().toString().padStart(2,'0')\}:$\{now.getMinutes().toString().padStart(2,'0')\}:$\{now.getSeconds().toString().padStart(2,'0')\}`;\
+\
+        \} catch (error) \{\
+            console.error('\uc0\u35712 \u21462 \u22833 \u25943 :', error);\
+            document.getElementById('tableBody').innerHTML = `<tr><td colspan="6" class="negative" style="text-align:center">\
+                <strong>\uc0\u28961 \u27861 \u35712 \u21462 \u36039 \u26009 \u65281 \u35531 \u30906 \u35469 \u32178 \u36335 \u36899 \u32218 \u25110 \u20351 \u29992  Live Server \u38283 \u21855 \u12290 </strong><br>\
+                \uc0\u37679 \u35492 \u35338 \u24687 : $\{error.message\}\
+            </td></tr>`;\
+            document.getElementById('lastUpdated').innerText = '\uc0\u26356 \u26032 \u22833 \u25943 ';\
+        \}\
+    \}\
+\
+    function updateDashboard(data) \{\
+        // 1. \uc0\u35336 \u31639 \u32317 \u35336 \
+        const totalCost = data.reduce((acc, curr) => acc + curr.cost, 0);\
+        const totalValue = data.reduce((acc, curr) => acc + curr.value, 0);\
+        const totalPL = totalValue - totalCost;\
+        const totalPct = totalCost > 0 ? (totalPL / totalCost) * 100 : 0;\
+\
+        // 2. \uc0\u26356 \u26032  KPI \u21345 \u29255 \
+        document.getElementById('kpi-cost').innerText = parseInt(totalCost).toLocaleString();\
+        document.getElementById('kpi-value').innerText = parseInt(totalValue).toLocaleString();\
+        \
+        const plEl = document.getElementById('kpi-pl');\
+        plEl.innerText = (totalPL > 0 ? '+' : '') + parseInt(totalPL).toLocaleString();\
+        plEl.className = `kpi-value $\{totalPL >= 0 ? 'positive' : 'negative'\}`;\
+        \
+        const pctEl = document.getElementById('kpi-pct');\
+        pctEl.innerText = (totalPct > 0 ? '+' : '') + totalPct.toFixed(2) + '%';\
+        pctEl.className = `kpi-value $\{totalPct >= 0 ? 'positive' : 'negative'\}`;\
+\
+        // 3. \uc0\u26356 \u26032 \u22294 \u34920 \
+        updateCharts(data);\
+\
+        // 4. \uc0\u26356 \u26032 \u34920 \u26684 \
+        const tableBody = document.getElementById('tableBody');\
+        tableBody.innerHTML = '';\
+        \
+        data.forEach(item => \{\
+            const row = document.createElement('tr');\
+            const plClass = item.pl >= 0 ? 'positive' : 'negative';\
+            row.innerHTML = `\
+                <td>$\{item.code\}</td>\
+                <td>$\{item.name\}</td>\
+                <td>$\{Math.round(item.cost).toLocaleString()\}</td>\
+                <td>$\{Math.round(item.value).toLocaleString()\}</td>\
+                <td class="$\{plClass\}">$\{Math.round(item.pl).toLocaleString()\}</td>\
+                <td class="$\{plClass\}">$\{item.pct.toFixed(2)\}%</td>\
+            `;\
+            tableBody.appendChild(row);\
+        \});\
+    \}\
+\
+    function updateCharts(data) \{\
+        if (chartInstance1) chartInstance1.destroy();\
+        if (chartInstance2) chartInstance2.destroy();\
+\
+        const sortedByValue = [...data].sort((a, b) => b.value - a.value).slice(0, 10);\
+        chartInstance1 = new Chart(document.getElementById('topHoldingsChart'), \{\
+            type: 'bar',\
+            data: \{\
+                labels: sortedByValue.map(i => i.name),\
+                datasets: [\{\
+                    label: '\uc0\u24235 \u23384 \u29694 \u20540 ',\
+                    data: sortedByValue.map(i => i.value),\
+                    backgroundColor: '#36a2eb',\
+                    borderRadius: 4\
+                \}]\
+            \},\
+            options: \{\
+                indexAxis: 'y',\
+                responsive: true,\
+                maintainAspectRatio: false,\
+                plugins: \{ legend: \{ display: false \} \}\
+            \}\
+        \});\
+\
+        const sortedByPL = [...data].sort((a, b) => b.pl - a.pl);\
+        const topGainers = sortedByPL.slice(0, 5);\
+        const topLosers = sortedByPL.slice(-5);\
+        const plChartData = [...new Set([...topGainers, ...topLosers])].sort((a, b) => b.pl - a.pl);\
+        \
+        chartInstance2 = new Chart(document.getElementById('plChart'), \{\
+            type: 'bar',\
+            data: \{\
+                labels: plChartData.map(i => i.name),\
+                datasets: [\{\
+                    label: '\uc0\u25613 \u30410 \u37329 \u38989 ',\
+                    data: plChartData.map(i => i.pl),\
+                    backgroundColor: plChartData.map(i => i.pl >= 0 ? '#28a745' : '#dc3545'),\
+                    borderRadius: 4\
+                \}]\
+            \},\
+            options: \{\
+                responsive: true,\
+                maintainAspectRatio: false,\
+                plugins: \{ legend: \{ display: false \} \}\
+            \}\
+        \});\
+    \}\
+\
+    function sortTable(n) \{\
+        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;\
+        table = document.getElementById("holdingsTable");\
+        switching = true;\
+        dir = "asc";\
+        while (switching) \{\
+            switching = false;\
+            rows = table.rows;\
+            for (i = 1; i < (rows.length - 1); i++) \{\
+                shouldSwitch = false;\
+                x = rows[i].getElementsByTagName("TD")[n];\
+                y = rows[i + 1].getElementsByTagName("TD")[n];\
+                \
+                let xVal = x.innerHTML.replace(/,/g, '').replace(/%/g, '');\
+                let yVal = y.innerHTML.replace(/,/g, '').replace(/%/g, '');\
+                let isNum = !isNaN(parseFloat(xVal));\
+\
+                if (dir == "asc") \{\
+                    if (isNum ? (parseFloat(xVal) > parseFloat(yVal)) : (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase())) \{\
+                        shouldSwitch = true;\
+                        break;\
+                    \}\
+                \} else if (dir == "desc") \{\
+                    if (isNum ? (parseFloat(xVal) < parseFloat(yVal)) : (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase())) \{\
+                        shouldSwitch = true;\
+                        break;\
+                    \}\
+                \}\
+            \}\
+            if (shouldSwitch) \{\
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);\
+                switching = true;\
+                switchcount ++;\
+            \} else \{\
+                if (switchcount == 0 && dir == "asc") \{\
+                    dir = "desc";\
+                    switching = true;\
+                \}\
+            \}\
+        \}\
+    \}\
+\
+    fetchData();\
+</script>\
+\
+</body>\
+</html>}
