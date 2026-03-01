@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>存股帳戶總覽</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <!-- 引入 Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind 設定-->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ["Noto Sans TC", 'sans-serif'],
+                    },
+                    colors: {
+                        rose: { 400: '#fb7185', 500: '#f43f5e' },
+                        emerald: { 400: '#34d399', 500: '#10b981'}
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自訂 CSS -->
+    <style>
+        body {
+            background-color: #020617; /* slate-950 */
+            color: #f8fafc; /* slate-50 */
+            overscroll-behavior-y: none;
+        }
+        /* 捲軸美化*/
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .glass-card {
+            background-color: rgba(30, 41, 59, 0.7); /* slate-800 帶透明 */
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.5); /* slate-700 */
+        }
+    </style>
+</head>
+
+<body class="antialiased min-h-screen flex flex-col">
+    <!-- Loading 畫面 -->
+    <div id="loading" class="fixed inset-0 bg-slate-950 z-50 flex flex-col items-center justify-center transition-opacity duration-500">
+        <i data-lucide="loader-2" class="w-12 h-12 text-blue-500 animate-spin mb-4"></i>
+        <p class="text-slate-400 font-medium tracking-widest animate-pulse">正在從雲端同步庫存資料...</p>
+    </div>
+
+    <!-- 錯誤提示 -->
+    <div id="error" class="hidden fixed inset-0 bg-slate-950 z-50 flex flex-col items-center justify-center">
+        <i data-lucide="alert-triangle" class="w-12 h-12 text-rose-500 mb-4"></i>
+        <p class="text-white text-lg font-bold mb-2">資料載入失敗</p>
+        <p id="error-msg" class="text-slate-400 mb-4"></p>
+        <button onclick="window.location.reload()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold transition-colors">重新整理</button>
+    </div>
+
+    <!-- 應用程式主體-->
+    <div id="app" class="hidden flex-1 flex flex-col w-full opacity-0 transition-opacity duration-1000">
+        <!-- Header -->
+        <header class="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 px-4 py-4 lg:px-8 flex justify-between items-center shadow-md">
+            <div>
+                <h1 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                    <i data-lucide="line-chart" class="text-blue-500"></i>
+                    存股帳戶總覽
+                    <span class="text-blue-400 text-[10px] px-1.5 py-0.5 bg-blue-500/10 rounded border border-blue-500/20 uppercase">Live</span>
+                </h1>
+                <p id="header-update-time" class="text-xs text-slate-400 mt-1"></p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="https://docs.google.com/spreadsheets/d/1bstBhNE9CO-ceOOuajxlJrbEKYbRX7kxMd4h5Qo5qwU/edit?gid=457021766#gid=457021766" target="_blank" class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-slate-300 border border-slate-700 transition-colors">
+                    <i data-lucide="external-link" class="w-4 h-4"></i> Google Sheets
+                </a>
+                <button onclick="fetchData()" class="p-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg border border-slate-700 transition-colors" title="重新整理">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="p-4 lg:p-8 max-w-[1400px] mx-auto w-full space-y-6">
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- 總市值-->
+                <div class="glass-card rounded-2xl p-6 shadow-lg flex flex-col justify-between hover:scale-[1.02] transition-transform group border-emerald-500/20">
+                    <div class="flex justify-between items-start mb-4">
+                        <p class="text-slate-400 text-sm font-bold tracking-wide">庫存總市值</p>
+                        <div class="p-2 rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/20">
+                            <i data-lucide="wallet" class="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 id="kpi-market-value" class="text-3xl font-black text-white tracking-tight">--</h3>
+                        <p class="text-xs text-slate-500 mt-1">總成本: <span id="kpi-total-cost" class="font-medium text-slate-400">--</span></p>
+                    </div>
+                </div>
+
+                <!-- 總損益 -->
+                <div class="glass-card rounded-2xl p-6 shadow-lg flex flex-col justify-between hover:scale-[1.02] transition-transform group">
+                    <div class="flex justify-between items-start mb-4">
+                        <p class="text-slate-400 text-sm font-bold tracking-wide">未實現總損益</p>
+                        <div id="kpi-profit-icon-bg" class="p-2 rounded-lg bg-slate-800 ring-1 ring-slate-700">
+                            <i id="kpi-profit-icon" data-lucide="activity" class="w-6 h-6 text-slate-400 group-hover:scale-110 transition-transform"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 id="kpi-profit" class="text-3xl font-black tracking-tight">--</h3>
+                        <div class="flex items-center text-sm mt-1">
+                            <span id="kpi-profit-pct" class="font-bold flex items-center gap-0.5">--</span>
+                            <span class="text-slate-500 ml-2 text-xs">投資報酬率</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!--月配息-->
+                <div class="glass-card rounded-2xl p-6 shadow-lg flex flex-col justify-between hover:scale-[1.02] transition-transform group border-blue-500/20">
+                    <div class="flex justify-between items-start mb-4">
+                        <p class="text-slate-400 text-sm font-bold tracking-wide">預估平均月配息</p>
+                        <div class="p-2 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/20">
+                            <i data-lucide="coins" class="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 id="kpi-monthly-div" class="text-3xl font-black text-white tracking-tight">--</h3>
+                        <p class="text-xs text-slate-500 mt-1">平均殖利率: <span id="kpi-avg-yield" class="font-medium text-blue-400">--</span></p>
+                    </div>
+                </div>
+
+                <!-- 總張數 -->
+                <div class="glass-card rounded-2xl p-6 shadow-lg flex flex-col justify-between hover:scale-[1.02] transition-transform group border-purple-500/20">
+                    <div class="flex justify-between items-start mb-4">
+                        <p class="text-slate-400 text-sm font-bold tracking-wide">合計庫存張數</p>
+                        <div class="p-2 rounded-lg bg-purple-500/10 ring-1 ring-purple-500/20">
+                            <i data-lucide="layers" class="w-6 h-6 text-purple-400 group-hover:scale-110 transition-transform"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-3xl font-black text-white tracking-tight"><span id="kpi-total-qty">--</span> <span class="text-lg font-bold text-slate-400">張</span></h3>
+                        <div class="w-full bg-slate-700/50 h-1.5 rounded-full mt-3 overflow-hidden">
+                            <div class="bg-purple-500 h-full w-[100%] rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 歷年損益柱狀圖-->
+                <div class="glass-card rounded-2xl p-6 shadow-lg lg:col-span-2 flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-400"></i> 歷年損益成長趨勢
+                        </h3>
+                    </div>
+                    <div id="historyChart" class="w-full h-[350px]"></div>
+                </div>
+
+                <!-- 資產佔比圓餅圖-->
+                <div class="glass-card rounded-2xl p-6 shadow-lg flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i data-lucide="pie-chart" class="w-5 h-5 text-amber-400"></i> 持股權重分佈
+                        </h3>
+                    </div>
+                    <div id="pieChart" class="w-full h-[350px]"></div>
+                </div>
+            </div>
+
+            <!-- 庫存清單表格 -->
+            <div class="glass-card rounded-2xl shadow-xl overflow-hidden flex flex-col border-t-4 border-t-slate-600">
+                <div class="p-5 border-b border-slate-700/80 flex justify-between items-center bg-slate-800/40">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="list" class="w-5 h-5 text-slate-400"></i>庫存明細清單
+                    </h3>
+                    <div class="text-sm font-mono text-slate-400 bg-slate-900 px-3 py-1 rounded border border-slate-700">
+                        標的數: <span id="table-count" class="text-white">0</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left whitespace-nowrap">
+                        <thead class="text-xs text-slate-400 uppercase bg-slate-900/80 border-b border-slate-700">
+                            <tr>
+                                <th class="px-5 py-4 font-bold">標的名稱</th>
+                                <th class="px-5 py-4 text-right font-bold">現價</th>
+                                <th class="px-5 py-4 text-right font-bold">成本</th>
+                                <th class="px-5 py-4 text-right font-bold">張數</th>
+                                <th class="px-5 py-4 text-right font-bold">庫存市值</th>
+                                <th class="px-5 py-4 text-right font-bold">庫存損益</th>
+                                <th class="px-5 py-4 text-right font-bold">報酬率</th>
+                                <th class="px-5 py-4 text-right font-bold">殖利率</th>
+                                <th class="px-5 py-4 text-right font-bold">平均月配</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-tbody" class="divide-y divide-slate-700/50 bg-slate-800/20">
+                            <!-- JS 動態產生-->
+                        </tbody>
+                        <tfoot class="bg-slate-900/90 border-t-2 border-slate-600 font-bold text-white">
+                            <tr>
+                                <td class="px-5 py-4 text-center text-slate-400">總計</td>
+                                <td class="px-5 py-4"></td>
+                                <td class="px-5 py-4"></td>
+                                <td id="foot-qty" class="px-5 py-4 text-right text-slate-300">--</td>
+                                <td id="foot-mv" class="px-5 py-4 text-right">--</td>
+                                <td id="foot-profit" class="px-5 py-4 text-right">--</td>
+                                <td id="foot-roi" class="px-5 py-4 text-right">--</td>
+                                <td id="foot-yield" class="px-5 py-4 text-right text-slate-400">--</td>
+                                <td id="foot-monthly" class="px-5 py-4 text-right text-blue-400">--</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <footer class="text-center text-xs text-slate-600 pb-8 mt-4">
+                Powered by Google Sheets & ECharts | Designed in Dark UI
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        //
+        // 1. 全域變數與格式化工具
+        //
+        // 替換為新的 CSV URL
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSebkYMuCTdXzkEM4JTt5nTUtw5QasrTNk0A_aeiNHM5EU3uDgHJFI7idE_ZZ_jQRMnYJU2k1FV_98R/pub?gid=457021766&single=true&output=csv';
+
+        // 為了相容台股習慣:上漲紅色、下跌綠色(若要美股習慣則互換)
+        const COLOR_UP = 'text-rose-400';
+        const COLOR_DOWN = 'text-emerald-400';
+        const BG_UP = 'bg-rose-500/10 border-rose-500/30';
+        const BG_DOWN = 'bg-emerald-500/10 border-emerald-500/30';
+
+        // 格式化函數
+        const formatCurrency = (v) => new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(v || 0);
+        const formatNumber = (v) => new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(v || 0);
+        const formatLots = (v) => new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 }).format((v || 0) / 1000);
+        const formatPercent = (v) => `${Number(v || 0).toFixed(2)}%`;
+        
+        const parseNumber = (str) => {
+            if (str === null || str === undefined || str === '') return 0;
+            const clean = String(str).replace(/[\$,% ]/g, '').trim();
+            const num = parseFloat(clean);
+            return isNaN(num) ? 0 : num;
+        };
+
+        // CSV 列解析(處理引號內的逗號)
+        function parseCSVRow(text) {
+            let result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                let nextChar = text[i + 1];
+                if (char === '"' && nextChar === '"' && inQuotes) {
+                    current += '"';
+                    i++;
+                } else if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        //
+        // 2. 資料抓取與解析流程
+        //
+        async function fetchData() {
+            const loadingEl = document.getElementById('loading');
+            const appEl = document.getElementById('app');
+            const errorEl = document.getElementById('error');
+
+            loadingEl.classList.remove('hidden');
+            appEl.classList.remove('opacity-100');
+            appEl.classList.add('opacity-0');
+            errorEl.classList.add('hidden');
+
+            try {
+                //加上時間戳防止快取
+                const response = await fetch(`${CSV_URL}&t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const csvText = await response.text();
+                processData(csvText);
+
+                // 設定更新時間
+                const now = new Date();
+                document.getElementById('header-update-time').innerText = `最後更新: ${now.toLocaleDateString('zh-TW')} ${now.toLocaleTimeString('zh-TW')}`;
+
+                // 顯示畫面
+                setTimeout(() => {
+                    loadingEl.classList.add('hidden');
+                    appEl.classList.remove('hidden');
+                    // 觸發重繪圖表,因為 display block 之後才能正確取得寬高
+                    setTimeout(() => {
+                        appEl.classList.add('opacity-100');
+                        initCharts();
+                        lucide.createIcons();
+                    }, 50);
+                }, 800);
+            } catch (error) {
+                console.error("Fetch data failed:", error);
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+                document.getElementById('error-msg').innerText = error.message;
+            }
+        }
+
+        // 全域資料存放
+        let inventoryList = [];
+        let historyList = [];
+        let summary = {
+            totalMV: 0, totalCost: 0, totalProfit: 0, totalQty: 0, totalMonthly: 0
+        };
+
+        function processData(csvText) {
+            inventoryList = [];
+            historyList = [];
+            const lines = csvText.split(/\r?\n/);
+
+            // 從第二行開始讀取(跳過標題列)
+            for (let i = 1; i < lines.length; i++) {
+                const rawLine = lines[i];
+                if (!rawLine.trim()) continue;
+
+                const row = parseCSVRow(rawLine);
+
+                // 解析 A~J欄庫存資料(A欄有代號才算)
+                if (row[0] && row[0].trim() !== '') {
+                    inventoryList.push({
+                        code: row[0],
+                        name: row[1],
+                        price: parseNumber(row[2]),
+                        cost: parseNumber(row[3]),
+                        qty: parseNumber(row[4]),
+                        marketValue: parseNumber(row[5]),
+                        profit: parseNumber(row[6]),
+                        profitPct: parseNumber(row[7]),
+                        yieldRate: parseNumber(row[8]),
+                        monthlyDiv: parseNumber(row[9])
+                    });
+                }
+
+                // 解析 M~P 欄歷年損益資料(M欄(idx12)有年度才算)
+                if (row.length > 12 && row[12] && row[12].trim() !== '') {
+                    historyList.push({
+                        year: row[12].replace('年', ''), //去除"年"字讓X軸簡潔
+                        dividend: parseNumber(row[13]),
+                        spread: parseNumber(row[14]),
+                        total: parseNumber(row[15])
+                    });
+                }
+            }
+
+            // 計算統計數據
+            summary.totalMV = inventoryList.reduce((sum, item) => sum + item.marketValue, 0);
+            
+            // 由於原表給的是"成本"(單價)跟“張數",我們直接自己推算精確總成本,或者相減。但F(市值)-G(損益) = 成本
+            summary.totalCost = inventoryList.reduce((sum, item) => sum + (item.marketValue - item.profit), 0);
+
+            summary.totalProfit = inventoryList.reduce((sum, item) => sum + item.profit, 0);
+            summary.totalQty = inventoryList.reduce((sum, item) => sum + item.qty, 0);
+            summary.totalMonthly = inventoryList.reduce((sum, item) => sum + item.monthlyDiv, 0);
+            summary.totalRoi = summary.totalCost > 0 ? (summary.totalProfit / summary.totalCost) * 100 : 0;
+            summary.avgYield = summary.totalMV > 0 ? ((summary.totalMonthly * 12) / summary.totalMV) * 100 : 0;
+
+            renderDOM();
+        }
+
+        //
+        // 3. 渲染 DOM 與UI 更新
+        //
+        function renderDOM() {
+            // 1. 渲染 KPI Cards
+            document.getElementById('kpi-market-value').innerText = formatCurrency(summary.totalMV);
+            document.getElementById('kpi-total-cost').innerText = formatCurrency(summary.totalCost);
+
+            const profitEl = document.getElementById('kpi-profit');
+            const profitPctEl = document.getElementById('kpi-profit-pct');
+            const iconBgEl = document.getElementById('kpi-profit-icon-bg');
+            const iconEl = document.getElementById('kpi-profit-icon');
+
+            profitEl.innerText = (summary.totalProfit >= 0 ? '+' : '') + formatNumber(summary.totalProfit);
+            profitPctEl.innerText = (summary.totalProfit >= 0 ? '+' : '') + formatPercent(summary.totalRoi);
+
+            // 處理損益顏色
+            if (summary.totalProfit >= 0) {
+                profitEl.className = `text-3xl font-black tracking-tight ${COLOR_UP}`;
+                profitPctEl.className = `font-bold flex items-center gap-0.5 ${COLOR_UP}`;
+                iconBgEl.className = 'p-2 rounded-lg bg-rose-500/10 ring-1 ring-rose-500/20';
+                iconEl.setAttribute('data-lucide', 'trending-up');
+                iconEl.className = `w-6 h-6 ${COLOR_UP} group-hover:scale-110 transition-transform`;
+            } else {
+                profitEl.className = `text-3xl font-black tracking-tight ${COLOR_DOWN}`;
+                profitPctEl.className = `font-bold flex items-center gap-0.5 ${COLOR_DOWN}`;
+                iconBgEl.className = 'p-2 rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/20';
+                iconEl.setAttribute('data-lucide', 'trending-down');
+                iconEl.className = `w-6 h-6 ${COLOR_DOWN} group-hover:scale-110 transition-transform`;
+            }
+
+            document.getElementById('kpi-monthly-div').innerText = formatCurrency(summary.totalMonthly);
+            document.getElementById('kpi-avg-yield').innerText = formatPercent(summary.avgYield);
+            document.getElementById('kpi-total-qty').innerText = formatLots(summary.totalQty);
+
+            // 2. 渲染 Table
+            const tbody = document.getElementById('inventory-tbody');
+            tbody.innerHTML = '';
+            document.getElementById('table-count').innerText = inventoryList.length;
+
+            inventoryList.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-700/40 transition-colors group';
+
+                const isUp = item.profit >= 0;
+                const profitColor = isUp ? COLOR_UP : COLOR_DOWN;
+                const sign = isUp ? '+' : '';
+
+                tr.innerHTML = `
+                    <td class="px-5 py-4">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-slate-100 group-hover:text-blue-400 transition-colors">${item.name}</span>
+                            <span class="text-[10px] text-slate-500 font-mono tracking-wider">${item.code}</span>
+                        </div>
+                    </td>
+                    <td class="px-5 py-4 text-right font-medium text-slate-300">${item.price.toFixed(2)}</td>
+                    <td class="px-5 py-4 text-right text-slate-400">${item.cost.toFixed(2)}</td>
+                    <td class="px-5 py-4 text-right text-slate-300">${formatLots(item.qty)}</td>
+                    <td class="px-5 py-4 text-right font-bold text-white">${formatNumber(item.marketValue)}</td>
+                    <td class="px-5 py-4 text-right font-bold ${profitColor}">${sign}${formatNumber(item.profit)}</td>
+                    <td class="px-5 py-4 text-right font-bold ${profitColor}">${sign}${formatPercent(item.profitPct)}</td>
+                    <td class="px-5 py-4 text-right text-amber-400 font-medium">${formatPercent(item.yieldRate)}</td>
+                    <td class="px-5 py-4 text-right text-blue-400 font-bold">${formatNumber(item.monthlyDiv)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Footer 統計
+            document.getElementById('foot-qty').innerText = formatLots(summary.totalQty);
+            document.getElementById('foot-mv').innerText = formatCurrency(summary.totalMV);
+
+            const fProfit = document.getElementById('foot-profit');
+            const fRoi = document.getElementById('foot-roi');
+
+            fProfit.innerText = (summary.totalProfit >= 0 ? '+' : '') + formatNumber(summary.totalProfit);
+            fRoi.innerText = (summary.totalProfit >= 0 ? '+' : '') + formatPercent(summary.totalRoi);
+
+            fProfit.className = `px-5 py-4 text-right font-bold ${summary.totalProfit >= 0 ? COLOR_UP : COLOR_DOWN}`;
+            fRoi.className = `px-5 py-4 text-right font-bold ${summary.totalProfit >= 0 ? COLOR_UP : COLOR_DOWN}`;
+
+            document.getElementById('foot-yield').innerText = formatPercent(summary.avgYield);
+            document.getElementById('foot-monthly').innerText = formatCurrency(summary.totalMonthly);
+        }
+
+        //
+        // 4. 繪製 ECharts 圖表
+        //
+        let eHistoryChart = null;
+        let ePieChart = null;
+
+        function initCharts() {
+            // ECharts 通用文字樣式設定
+            const textStyle = { color: '#94a3b8', fontFamily: 'Noto Sans TC' };
+            const splitLineStyle = { lineStyle: { color: '#334155', type: 'dashed' } };
+
+            // ===歷年損益柱狀圖===
+            const historyDom = document.getElementById('historyChart');
+            if(eHistoryChart) eHistoryChart.dispose(); //清除舊實例
+
+            eHistoryChart = echarts.init(historyDom);
+
+            // 過濾並準備資料
+            const chartHistData = historyList.filter(d => d.year);
+            const lastYearIdx = chartHistData.length - 1;
+
+            if (chartHistData.length === 0) return; // 防呆處理
+
+            const currentYearStr = chartHistData[lastYearIdx].year;
+
+            // 取得過去三年的價差(不包含今年)作為平穩估計基準
+            const pastSpreads = chartHistData.slice(Math.max(0, lastYearIdx - 3), lastYearIdx).map(d => d.spread);
+            const avgSpread = pastSpreads.length > 0 ? (pastSpreads.reduce((a,b)=>a+b,0) / pastSpreads.length) : 0;
+
+            // 1. 計算今年預期目標
+            let currentTarget = null;
+            if (lastYearIdx > 0) {
+                const prevData = chartHistData[lastYearIdx - 1];
+                // 股息複利推估=前一年股息*(1+平均殖利率)
+                const expectedDiv = prevData.dividend * (1 + (summary.avgYield / 100));
+                currentTarget = expectedDiv + avgSpread;
+            }
+
+            // 2. 計算明年(預估年)預期目標
+            const nextYearStr = String(parseInt(currentYearStr) + 1);
+            // 明年股息預估=以目前每月配息推算整年,再乘上預期成長率
+            const nextExpectedDiv = (summary.totalMonthly * 12) * (1 + (summary.avgYield / 100));
+            // 價差保守打8折
+            const nextTarget = nextExpectedDiv + (avgSpread * 0.8);
+
+            // 準備圖表陣列
+            const years = chartHistData.map(d => d.year);
+            const dividends = chartHistData.map(d => d.dividend);
+            const spreads = chartHistData.map(d => d.spread);
+            const totals = chartHistData.map(d => d.total);
+            const expectedTotals = chartHistData.map((d,i) => i === lastYearIdx ? currentTarget : null);
+
+            // 附加明年預估的空資料框(創造出純虛線框)
+            years.push(nextYearStr + '(預估)');
+            dividends.push(null);
+            spreads.push(null);
+            totals.push(null); // Line chart 在這裡會斷開,不往下掉
+            expectedTotals.push(nextTarget);
+
+            const histOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    borderColor: '#334155',
+                    textStyle: { color: '#f8fafc' },
+                    axisPointer: {
+                        type: 'line',
+                        lineStyle: { color: '#64748b', type: 'dashed' }
+                    },
+                    formatter: function (params) {
+                        const yearName = params[0].name;
+                        let res = `<div class="font-bold mb-1 border-b border-slate-600 pb-1">${yearName}</div>`;
+                        let total = 0;
+                        let expected = null;
+                        let hasActuals = false;
+
+                        params.forEach(p => {
+                            if (p.seriesName === '預期目標') {
+                                if (p.value) expected = p.value;
+                            } else if (p.seriesName === '合計') {
+                                if (p.value !== undefined && p.value !== null) {
+                                    total = p.value;
+                                    hasActuals = true;
+                                }
+                            } else {
+                                if (p.value !== undefined && p.value !== null) {
+                                    res += `
+                                    <div class="flex justify-between gap-4 mt-1">
+                                        <span style="color:${p.color}"> ${p.seriesName}</span>
+                                        <span class="font-bold">${formatNumber(p.value)}</span>
+                                    </div>`;
+                                    hasActuals = true;
+                                }
+                            }
+                        });
+
+                        if (hasActuals) {
+                            res += `
+                            <div class="flex justify-between gap-4 mt-2 pt-1 border-t border-slate-600 text-white">
+                                <span>總計</span>
+                                <span class="font-black">${formatNumber(total)}</span>
+                            </div>`;
+                        } else {
+                            res += `<div class="text-slate-400 text-sm mt-1 italic">尚未產生實際損益</div>`;
+                        }
+
+                        if (expected !== null) {
+                            const pct = hasActuals ? ((total / expected) * 100).toFixed(1) : '0.0';
+                            res += `
+                            <div class="mt-2 pt-2 border-t border-slate-600 text-sm">
+                                <div class="flex justify-between gap-4 text-slate-400 mb-1">
+                                    <span>預期目標:</span><span>${formatNumber(expected)}</span>
+                                </div>
+                                <div class="flex justify-between gap-4 text-sky-400 font-bold">
+                                    <span>達成率:</span><span>${pct}%</span>
+                                </div>
+                            </div>`;
+                        }
+                        return res;
+                    }
+                },
+                legend: {
+                    data: ['股息','價差','合計'],
+                    textStyle: textStyle,
+                    top: 0
+                },
+                grid: { left: '2%', right: '2%', bottom: '5%', top: '15%', containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: years,
+                    axisLabel: { color: '#94a3b8', fontWeight: 'bold' },
+                    axisLine: { lineStyle: { color: '#475569' } },
+                    axisTick: { show: false }
+                },
+                yAxis: {
+                    type: 'value',
+                    splitLine: splitLineStyle,
+                    axisLabel: {
+                        color: '#94a3b8',
+                        formatter: (value) => value >= 10000 ? `${(value/10000).toFixed(0)}萬` : value
+                    }
+                },
+                series: [
+                    {
+                        name: '股息',
+                        type: 'bar',
+                        stack: 'Ad',
+                        itemStyle: { color: '#10b981', borderRadius: [0, 0, 4, 4] },
+                        data: dividends,
+                        barMaxWidth: 40,
+                        z: 2
+                    },
+                    {
+                        name: '價差',
+                        type: 'bar',
+                        stack: 'Ad',
+                        itemStyle: { color: '#f59e0b', borderRadius: [4, 4, 0, 0] },
+                        data: spreads,
+                        barMaxWidth: 40,
+                        z: 2
+                    },
+                    {
+                        name: '預期目標',
+                        type: 'bar',
+                        barGap: '-100%',
+                        itemStyle: {
+                            color: 'rgba(71, 85, 105, 0.2)',
+                            borderColor: '#64748b',
+                            borderWidth: 2,
+                            borderType: 'dashed',
+                            borderRadius: [4, 4, 0, 0]
+                        },
+                        data: expectedTotals,
+                        barMaxWidth: 40,
+                        z: 1,
+                        label: {
+                            show: true,
+                            position: 'top',
+                            distance: 10,
+                            formatter: function(params) {
+                                if (!params.value) return '';
+                                const actual = totals[params.dataIndex] || 0; // 若沒資料視為0
+                                const pct = ((actual / params.value) * 100).toFixed(1);
+                                const targetWan = Math.round(params.value / 10000);
+                                return `{title|目標${targetWan}萬}\n{pct|達成 ${pct}%}`;
+                            },
+                            rich: {
+                                title: { color: '#cbd5e1', fontSize: 12, fontWeight: 'bold', lineHeight: 18},
+                                pct: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold' }
+                            }
+                        }
+                    },
+                    {
+                        name: '合計',
+                        type: 'line',
+                        itemStyle: { color: '#3b82f6' },
+                        lineStyle: { width: 3 },
+                        symbolSize: 8,
+                        data: totals,
+                        z: 3,
+                        label: {
+                            show: true,
+                            position: 'top',
+                            color: '#e2e8f0',
+                            fontWeight: 'bold',
+                            formatter: function(p) {
+                                return (p.value !== null && p.value !== undefined) ? formatNumber(p.value) : '';
+                            }
+                        }
+                    }
+                ]
+            };
+            eHistoryChart.setOption(histOption);
+
+            // ===資產佔比圓餅圖===
+            const pieDom = document.getElementById('pieChart');
+            if(ePieChart) ePieChart.dispose();
+            ePieChart = echarts.init(pieDom);
+
+            // 按市值排序
+            const sortedInventory = [...inventoryList].sort((a,b) => b.marketValue - a.marketValue);
+            const pieData = sortedInventory.map(item => ({
+                name: item.name,
+                value: item.marketValue
+            }));
+
+            // 定義自訂調色盤(調整為高對比:藍、綠、橘、紫、粉紅)
+            const pieColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f43f5e', '#84cc16', '#14b8a6', '#6366f1'];
+
+            const pieOption = {
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    borderColor: '#334155',
+                    textStyle: { color: '#f8fafc' },
+                    formatter: function(p) {
+                        return `
+                        <div class="font-bold mb-1">${p.name}</div>
+                        <div class="text-blue-400 font-black">${formatCurrency(p.value)}</div>
+                        <div class="text-slate-400 text-xs mt-1">佔比: ${p.percent}%</div>`;
+                    }
+                },
+                legend: {
+                    type: 'scroll',
+                    orient: 'vertical',
+                    right: 0,
+                    top: 'center',
+                    textStyle: textStyle,
+                    pageIconColor: '#3b82f6',
+                    pageTextStyle: { color: '#94a3b8' }
+                },
+                series: [
+                    {
+                        name: '市值分佈',
+                        type: 'pie',
+                        radius: ['45%', '75%'],
+                        center: ['40%', '50%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 6,
+                            borderColor: '#1e293b',
+                            borderWidth: 2
+                        },
+                        color: pieColors,
+                        label: {
+                            show: false,
+                            position: 'center'
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: '18',
+                                fontWeight: 'bold',
+                                color: '#f8fafc',
+                                formatter: '{b}\n{d}%'
+                            }
+                        },
+                        labelLine: { show: false },
+                        data: pieData
+                    }
+                ]
+            };
+            ePieChart.setOption(pieOption);
+        }
+
+        // 監聽視窗大小改變,自動調整圖表尺寸
+        window.addEventListener('resize', () => {
+            if (eHistoryChart) eHistoryChart.resize();
+            if (ePieChart) ePieChart.resize();
+        });
+
+        // 啟動應用程式
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            fetchData();
+        });
+    </script>
+</body>
+</html>
