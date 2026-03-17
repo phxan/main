@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>捐血活動贈品回報工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .pb-safe { padding-bottom: max(env(safe-area-inset-bottom, 1rem), 1rem); }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 pb-28 font-sans">
+    <div class="max-w-md mx-auto p-4 pt-6">
+        
+        <!-- 標題 -->
+        <h1 class="text-2xl font-bold text-center text-red-600 mb-6 flex items-center justify-center gap-2">
+            <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            贈品回報小幫手
+        </h1>
+        
+        <!-- 區塊：基本資訊 -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-gray-100">
+            <h2 class="text-lg font-bold text-gray-700 mb-3 border-l-4 border-red-500 pl-2">基本資訊</h2>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">站點</label>
+                    <input type="text" id="station" value="中壢捐血室" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-base focus:bg-white focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">日期</label>
+                    <input type="text" id="date" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-base focus:bg-white focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">捐血人次</label>
+                    <input type="number" inputmode="numeric" id="donors" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-base focus:bg-white focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none transition-all" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">捐血袋數</label>
+                    <input type="number" inputmode="numeric" id="bags" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-base focus:bg-white focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none transition-all" placeholder="0">
+                </div>
+            </div>
+        </div>
+
+        <!-- 區塊：原始庫存 -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-gray-100">
+            <h2 class="text-lg font-bold text-gray-700 mb-3 border-l-4 border-blue-500 pl-2">原始庫存</h2>
+            <div class="space-y-3">
+                <div class="flex gap-3">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-500 mb-1">海霸王 (盒)</label>
+                        <input type="number" inputmode="numeric" id="init_hai" class="w-full bg-blue-50 border border-blue-100 rounded-xl p-3 text-base focus:bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none transition-all" placeholder="0">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-500 mb-1">大地酒店 (盒)</label>
+                        <input type="number" inputmode="numeric" id="init_dadi" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-base text-gray-600 focus:bg-white focus:ring-2 focus:ring-blue-200 outline-none transition-all" placeholder="自動同步">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">原始兌換券 (張)</label>
+                    <input type="number" inputmode="numeric" id="init_voucher" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-base focus:bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none transition-all" placeholder="0">
+                </div>
+            </div>
+        </div>
+
+        <!-- 區塊：剩餘數量 -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm mb-4 border border-gray-100">
+            <h2 class="text-lg font-bold text-gray-700 mb-3 border-l-4 border-green-500 pl-2">剩餘庫存 (結算用)</h2>
+            <div class="space-y-3">
+                <div class="flex gap-3">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-500 mb-1">剩餘海霸王 (盒)</label>
+                        <input type="number" inputmode="numeric" id="rem_hai" class="w-full bg-green-50 border border-green-100 rounded-xl p-3 text-base focus:bg-white focus:ring-2 focus:ring-green-200 focus:border-green-400 outline-none transition-all" placeholder="0">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-500 mb-1">剩餘大地 (盒)</label>
+                        <input type="number" inputmode="numeric" id="rem_dadi" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-base text-gray-600 focus:bg-white focus:ring-2 focus:ring-green-200 outline-none transition-all" placeholder="自動同步">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">剩餘兌換券 (張)</label>
+                    <input type="number" inputmode="numeric" id="rem_voucher" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-base focus:bg-white focus:ring-2 focus:ring-green-200 focus:border-green-400 outline-none transition-all" placeholder="0">
+                </div>
+            </div>
+        </div>
+
+        <!-- 區塊：即時預覽 -->
+        <div class="bg-gray-800 p-5 rounded-2xl shadow-sm mb-4 text-white">
+            <h2 class="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center justify-between">
+                <span>回報文預覽</span>
+                <span class="text-xs font-normal text-gray-500 border border-gray-600 px-2 py-0.5 rounded">即時產生</span>
+            </h2>
+            <pre id="preview" class="whitespace-pre-wrap font-sans text-sm md:text-base leading-relaxed text-gray-100"></pre>
+        </div>
+    </div>
+
+    <!-- 底部懸浮複製按鈕 -->
+    <div class="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200 pt-3 pb-safe px-4 flex justify-center shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-50">
+        <button onclick="copyToClipboard()" class="w-full max-w-md bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-transform transform active:scale-95 flex justify-center items-center gap-2 text-lg">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            一鍵複製回報文
+        </button>
+    </div>
+
+    <!-- 複製成功的提示窗 -->
+    <div id="toast" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-900/90 text-white px-6 py-3 rounded-full opacity-0 transition-opacity pointer-events-none z-50 shadow-2xl flex items-center gap-2 font-medium">
+        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        已複製到剪貼簿！
+    </div>
+
+    <script>
+        // 取得輸入值 (若為空或非數字，則視為 0)
+        function getVal(id) {
+            return parseInt(document.getElementById(id).value) || 0;
+        }
+
+        // 更新回報文邏輯
+        function updateResult() {
+            const station = document.getElementById('station').value || '';
+            const date = document.getElementById('date').value || '';
+            const donors = getVal('donors');
+            const bags = getVal('bags');
+            
+            const initHai = getVal('init_hai');
+            const initDadi = getVal('init_dadi');
+            const initVoucher = getVal('init_voucher');
+            
+            const remHai = getVal('rem_hai');
+            const remDadi = getVal('rem_dadi');
+            const remVoucher = getVal('rem_voucher');
+            
+            // 計算發出數量
+            const issuedHai = Math.max(0, initHai - remHai);
+            const issuedDadi = Math.max(0, initDadi - remDadi);
+            const issuedVoucher = Math.max(0, initVoucher - remVoucher);
+            
+            // 總發出禮品數 = 發出海霸王組數 + 發出兌換券張數
+            const totalGifts = issuedHai + issuedVoucher;
+            
+            // 捐血人不領的差額 = 捐血袋數 - 發出禮品總數
+            const unclaimed = bags - totalGifts;
+            
+            const outputText = `站點：${station}
+日期：${date}
+捐血人次：${donors}人次
+捐血袋數：${bags}袋
+海霸王剩${remHai}盒（發出${issuedHai}盒）
+大地剩${remDadi}盒（發出${issuedDadi}盒）
+禮卷剩 ${remVoucher}張（發出${issuedVoucher}張）
+${bags}袋-${totalGifts}份禮贈品=${unclaimed}
+${unclaimed} 份禮贈品  捐血人不領。
+以上，謝謝~`;
+
+            document.getElementById('preview').textContent = outputText;
+        }
+
+        // 當海霸王初始數量變動時，同步修改大地數量
+        document.getElementById('init_hai').addEventListener('input', function(e) {
+            document.getElementById('init_dadi').value = e.target.value;
+            updateResult();
+        });
+
+        // 當海霸王剩餘數量變動時，同步修改大地剩餘數量
+        document.getElementById('rem_hai').addEventListener('input', function(e) {
+            document.getElementById('rem_dadi').value = e.target.value;
+            updateResult();
+        });
+
+        // 綁定所有 input，當數值改變時立刻更新預覽
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', updateResult);
+        });
+
+        // 初始化設定今日日期
+        const today = new Date();
+        document.getElementById('date').value = `${today.getMonth() + 1}/${today.getDate()}`;
+        updateResult();
+
+        // 顯示提示訊息小窗
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerHTML = `<svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>${msg}`;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 2000);
+        }
+
+        // 複製到剪貼簿功能
+        function copyToClipboard() {
+            const text = document.getElementById('preview').textContent;
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('已複製到剪貼簿！');
+                }).catch(err => {
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                fallbackCopyTextToClipboard(text);
+            }
+        }
+
+        // 備用複製方案 (相容舊手機瀏覽器)
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if(successful) showToast('已複製到剪貼簿！');
+            } catch (err) {
+                alert('複製失敗，請手動複製。');
+            }
+            document.body.removeChild(textArea);
+        }
+    </script>
+</body>
+</html>
